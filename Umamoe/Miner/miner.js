@@ -71,7 +71,7 @@ function buildUrl(endpoint, pathParams = {}, queryParams = {}){
     path = path.replace(`{${k}}`, encodeURIComponent(pathParams[k]));
   });
   const base = API_CONFIG.baseUrl.replace(/\/$/, '');
-  const url = new URL(path, base);
+  const url = new URL(base + path);
   if(queryParams){
     Object.keys(queryParams).forEach(k=>{
       if(queryParams[k] !== undefined && queryParams[k] !== null){
