@@ -173,6 +173,10 @@ app.get('/', (_req, res) => {
   res.send('Umakraft UmaMoe — Discord bot running.');
 });
 
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: Math.floor(process.uptime()), timestamp: new Date().toISOString() });
+});
+
 app.post('/interactions', async (req, res) => {
   const signature = req.headers['x-signature-ed25519'];
   const timestamp = req.headers['x-signature-timestamp'];
