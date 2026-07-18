@@ -6,7 +6,7 @@ module.exports = {
       {
         name: 'trainer_id',
         description: 'Trainer identifier',
-        type: 'STRING',
+        type: 3,
         required: true,
       },
     ],

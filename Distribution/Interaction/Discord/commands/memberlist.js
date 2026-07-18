@@ -8,7 +8,7 @@ module.exports = {
       {
         name: 'circle_id',
         description: 'Circle identifier or uma.moe circle URL',
-        type: 'STRING',
+        type: 3,
         required: true,
       },
     ],

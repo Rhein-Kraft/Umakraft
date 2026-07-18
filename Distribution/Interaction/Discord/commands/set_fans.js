@@ -6,7 +6,7 @@ module.exports = {
       {
         name: 'fan_count',
         description: 'Number of fans to register',
-        type: 'INTEGER',
+        type: 4,
         required: true,
       },
     ],

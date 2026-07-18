@@ -240,7 +240,7 @@ async function start() {
     });
     console.log(`[server] Registered ${registered.length} slash command(s) in guild ${GUILD_ID}`);
   } catch (err) {
-    console.error('[server] Command registration failed:', err.message);
+    console.error('[server] Command registration failed:', err.message, err.body || '');
     // Non-fatal — commands may already be registered.
   }
 

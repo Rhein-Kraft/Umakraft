@@ -52,17 +52,17 @@ module.exports = {
     description: 'Links a Discord user to a Uma Musume trainer profile.',
     options: [
       {
-        name: 'discord_user',
-        description: 'Discord user to link (defaults to yourself)',
-        type: 'USER',
-        required: false,
-      },
-      {
         name: 'trainer',
         description: 'Trainer name or ID',
-        type: 'STRING',
+        type: 3,
         required: true,
         autocomplete: true,
+      },
+      {
+        name: 'discord_user',
+        description: 'Discord user to link (defaults to yourself)',
+        type: 6,
+        required: false,
       },
     ],
   },

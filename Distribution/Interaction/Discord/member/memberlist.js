@@ -1,4 +1,4 @@
-const { callMiner } = require('../../../Umamoe/Miner/miner');
+const { callMiner } = require('../../../../Umamoe/Miner/miner');
 const { normalizeCircleId } = require('../commands/circle-utils');
 
 async function fetchMemberList(circleInput){
