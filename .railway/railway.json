@@ -1,28 +1,30 @@
 {
-  "service": {
-    "name": "umakraft-umamoe",
-    "type": "docker"
-  },
+  "name": "umakraft-umamoe",
+  "type": "docker",
   "build": {
     "dockerfilePath": "Dockerfile"
   },
   "deploy": {
     "startCommand": "npm start"
   },
-  "env": {
+  "variables": {
     "DISCORD_APPLICATION_ID": {
+      "value": "",
       "description": "Discord application/client ID",
       "required": true
     },
     "DISCORD_GUILD_ID": {
+      "value": "",
       "description": "Discord server/guild ID",
       "required": true
     },
     "DISCORD_BOT_TOKEN": {
+      "value": "",
       "description": "Discord bot token",
       "required": true
     },
     "UMAMOE_API_URL": {
+      "value": "https://uma.moe/api",
       "description": "Uma.moe API base URL",
       "required": true
     }
