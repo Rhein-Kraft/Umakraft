@@ -6,7 +6,8 @@ Links a Discord user to a Uma Musume trainer profile.
 
 ## Input
 
-- Trainer Identifier
+- Discord user (optional)
+- Trainer name or ID (autocomplete enabled)
 
 ## Output
 

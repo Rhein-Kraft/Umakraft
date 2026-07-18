@@ -4,10 +4,22 @@ function createDiscordInteraction({ services, logger }) {
   const commands = loadCommands();
 
   async function handleInteraction(interaction) {
-    if (!interaction.isCommand?.()) return;
-
     const commandName = interaction.commandName;
     const command = commands.get(commandName);
+
+    if (interaction.isAutocomplete?.()) {
+      if (command?.autocomplete) {
+        try {
+          return await command.autocomplete({ interaction, services, logger });
+        } catch (error) {
+          logger?.warn?.('Discord autocomplete error', { command: commandName, error });
+          return interaction.respond?.([]);
+        }
+      }
+      return;
+    }
+
+    if (!interaction.isCommand?.()) return;
 
     if (!command) {
       return interaction.reply({

@@ -1,0 +1,15 @@
+# Railway Docker deployment file
+# Use this file to configure Railway to build and run the Docker container.
+
+# By default Railway will build this repository using the Dockerfile at the project root.
+# If you need a custom service name or environment variables, configure them in Railway's project settings.
+
+service:
+  name: umakraft-umamoe
+  type: docker
+
+build:
+  dockerfilePath: Dockerfile
+
+deploy:
+  command: npm start
