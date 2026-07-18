@@ -22,17 +22,28 @@ If a behavior is not defined in this specification, the implementation must not 
 
 ---
 
+# Related Documentation
+
+This specification must be read alongside:
+
+* `Umamoe/DATA_FORMAT.md` — defines the trusted data structure
+* `Umamoe/ERROR_HANDLING.md` — defines error classification and reporting
+* `Umamoe/INTEGRATION_EXAMPLE.md` — shows Vault behavior in end-to-end scenarios
+* `Umamoe/Inspector/VALIDATION_RULES.md` — defines what data the Vault may accept
+
+---
+
 # Responsibilities
 
 The Vault is responsible for:
 
 1. Receiving accepted data from the Inspector.
-2. Storing trusted data.
-3. Retrieving stored data when requested by an authorized internal component.
-4. Updating stored data when the system explicitly requires an update.
-5. Removing data when an authorized cleanup operation requires removal.
+2. Storing trusted data persistently.
+3. Retrieving stored data when requested by authorized internal components.
+4. Updating stored data only when requested explicitly.
+5. Deleting stored data only when authorized.
 6. Preserving the integrity of stored data.
-7. Reporting storage failures clearly.
+7. Reporting storage and retrieval failures clearly.
 
 ---
 
@@ -40,7 +51,41 @@ The Vault is responsible for:
 
 The Vault receives data that has successfully passed inspection.
 
-The primary input must come from the Inspector.
+This data must be delivered through an Inspector-approved interface and should include both the trusted payload and metadata about its origin.
+
+The Vault input envelope must not be treated as an untrusted payload.
+
+Example trusted input:
+
+```json
+{
+  "trustedData": {
+    "id": "trainer-alice-001",
+    "name": "Alice",
+    "fans": 150000000,
+    "rank": 87,
+    "characters": ["uma-musume-special-week"],
+    "achievements": []
+  },
+  "metadata": {
+    "source": "uma.moe /api/trainers/alice-001",
+    "inspectedAt": "2026-07-18T12:34:56Z"
+  }
+}
+```
+
+Example trusted error rejection input (Vault must NOT store this):
+
+```json
+{
+  "success": false,
+  "error": "INVALID_TYPE",
+  "message": "fans must be a number",
+  "retriable": false
+}
+```
+
+The Vault must not accept untrusted or rejected data directly from external APIs or unrelated components.
 
 ```text id="w5f3z9"
 Miner
@@ -56,17 +101,15 @@ Inspector
 Vault
 ```
 
-The Vault must not accept untrusted data directly from external APIs or unrelated components.
-
 ---
 
 # Trusted Data Boundary
 
 Data entering the Vault is considered trusted according to the inspection rules defined by the Inspector.
 
-The Vault must not assume responsibility for performing the Inspector's validation process again.
+The Vault must not perform the Inspector's validation again.
 
-However, the Vault must protect the integrity of the data it stores.
+If the incoming payload does not include Inspector-approved trust metadata, the Vault must reject it and report an error.
 
 The Vault must not silently alter stored information.
 
@@ -74,28 +117,63 @@ The Vault must not silently alter stored information.
 
 # Storage Responsibilities
 
-The Vault must provide a reliable mechanism for storing trusted data.
+The Vault must provide a reliable and configurable mechanism for storing trusted data.
 
-The storage implementation may use an approved storage method such as:
+Approved storage methods include:
 
 * Database storage.
 * Local persistent storage.
 * Structured files.
 * Another approved persistence system.
 
-The selected storage method must follow the project's architecture and configuration.
+The Vault implementation must be designed so the underlying storage method can be replaced without rewriting the entire UmaMoe pipeline.
 
-Storage details should be organized so that the underlying storage method can be changed without requiring the entire UmaMoe pipeline to be rewritten.
+The Vault should use a storage adapter pattern and keep storage configuration centralized.
+
+Example adapter interface:
+
+```javascript
+export interface VaultStorageAdapter {
+  store(trustedEnvelope): Promise<StorageResult>;
+  retrieve(query): Promise<RetrieveResult>;
+  update(id, patch): Promise<UpdateResult>;
+  remove(id): Promise<DeleteResult>;
+}
+```
 
 ---
 
 # Retrieval
 
-The Vault must provide a clear method for retrieving trusted data.
+The Vault must provide a clear interface for authorized downstream components to retrieve trusted data.
 
-Downstream departments may request data from the Vault through an approved interface.
+The Vault must not interpret, calculate, or transform data for downstream consumers.
 
-For example:
+Supported retrieval operations must include at least:
+
+* `getById(id)` — retrieve a single trusted record
+* `getAll()` — retrieve all trusted records
+* `query(criteria)` — retrieve matching records without applying business logic
+
+Example retrieval output:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "trainer-alice-001",
+    "name": "Alice",
+    "fans": 150000000,
+    "rank": 87
+  },
+  "metadata": {
+    "storedAt": "2026-07-18T12:35:20Z",
+    "source": "uma.moe /api/trainers/alice-001"
+  }
+}
+```
+
+The Vault must not calculate or interpret the meaning of requested data.
 
 ```text id="0v0xk3"
 Refinery
@@ -108,10 +186,6 @@ Vault
     ▼
 Refinery
 ```
-
-The Vault retrieves and returns stored data.
-
-It must not calculate or interpret the meaning of the requested data.
 
 ---
 
@@ -128,13 +202,15 @@ The Vault must not:
 * Transform data for presentation.
 * Modify data simply because another department requires a different format.
 
-If another department requires a different format, that transformation belongs to the appropriate downstream department.
+If another department requires a different format, that transformation belongs to the requesting department.
+
+The Vault must also preserve trusted metadata that documents the data source and inspection timestamp.
 
 ---
 
 # Updates
 
-The Vault may update stored data when an authorized update operation is requested.
+The Vault may update stored data only when an authorized update operation is requested.
 
 Updates must:
 
@@ -144,6 +220,15 @@ Updates must:
 * Avoid accidental overwriting of unrelated information.
 
 The Vault must not independently invent new data or calculate replacement values.
+
+Example update interface:
+
+```javascript
+await vault.update('trainer-alice-001', {
+  trustedData: { fans: 151000000 },
+  metadata: { updatedAt: '2026-07-18T13:00:00Z' }
+});
+```
 
 ---
 
@@ -157,13 +242,19 @@ Deletion must:
 * Follow the project's data-retention rules.
 * Avoid accidental deletion of unrelated data.
 
-The Vault must not remove trusted data simply because it is unused at the moment.
+The Vault must not remove trusted data simply because it is unused.
+
+Example delete interface:
+
+```javascript
+await vault.remove('trainer-alice-001');
+```
 
 ---
 
 # Error Handling
 
-The Vault must handle storage failures safely.
+The Vault must handle storage and retrieval failures safely.
 
 The implementation must:
 
@@ -172,9 +263,37 @@ The implementation must:
 3. Detect failed update operations.
 4. Detect failed deletion operations.
 5. Report failures clearly.
-6. Avoid silently claiming that an operation succeeded when it failed.
+6. Avoid silently claiming success when operations fail.
 
 The Vault must preserve the original error information whenever possible.
+
+Vault-specific errors include:
+
+* `VAULT_STORAGE_FAILURE` — storage backend failure
+* `VAULT_RETRIEVAL_FAILURE` — unable to retrieve requested data
+* `VAULT_UPDATE_FAILURE` — update failed
+* `VAULT_DELETION_FAILURE` — deletion failed
+* `VAULT_INVALID_INPUT` — data was not trusted or did not match expected envelope
+
+The Vault should return errors using the standard UmaMoe error result format defined in `Umamoe/ERROR_HANDLING.md`.
+
+Example Vault error result:
+
+```javascript
+{
+  success: false,
+  error: 'VAULT_STORAGE_FAILURE',
+  message: 'Failed to persist trusted data to the storage backend.',
+  severity: 'critical',
+  retriable: true,
+  timestamp: '2026-07-18T13:05:00Z',
+  context: {
+    id: 'trainer-alice-001',
+    storageBackend: 'file',
+    originalError: 'Disk write failed'
+  }
+}
+```
 
 ---
 
@@ -249,15 +368,56 @@ Refinery
 The implementation of `vault.js` must:
 
 * Provide a clear storage interface.
-* Accept trusted data from the Inspector.
-* Store trusted data persistently according to the project configuration.
+* Accept trusted data from the Inspector only.
+* Store trusted data persistently according to project configuration.
+* Preserve trusted data and metadata accurately.
 * Provide retrieval methods for authorized downstream components.
-* Support intentional updates where required.
-* Support intentional deletion where required.
+* Support intentional updates when requested.
+* Support intentional deletion when requested.
+* Reject untrusted or invalid inputs.
 * Preserve stored data integrity.
-* Clearly report storage failures.
-* Avoid business logic.
-* Avoid data analysis.
+* Clearly report storage, retrieval, update, and deletion failures.
+* Preserve the original error information when reporting failures.
+* Avoid business logic and data analysis.
+* Avoid transforming data for presentation.
+* Keep storage configuration centralized and replaceable.
+
+---
+
+# Implementation Boundary
+
+The Vault is the final storage layer in the UmaMoe pipeline.
+
+It receives trusted data from the Inspector and provides it to downstream consumers.
+
+It must not perform upstream or downstream responsibilities, such as acquisition, transport, validation, analysis, or business logic.
+
+```text
+Miner -> Courier -> Inspector -> Vault -> Refinery
+```
+
+---
+
+# Quick Reference Checklist
+
+* [ ] Vault accepts only trusted data from the Inspector.
+* [ ] Vault rejects untrusted or rejected payloads.
+* [ ] Vault stores data using a configurable adapter.
+* [ ] Vault preserves raw data and metadata.
+* [ ] Vault supports retrieval, update, and deletion operations.
+* [ ] Vault logs all storage events and failures.
+* [ ] Vault reports failures clearly and preserves original error context.
+* [ ] Vault does not validate incoming data.
+* [ ] Vault does not transform data for presentation.
+* [ ] Vault does not perform business logic.
+
+---
+
+# Version History
+
+* `v1.0` — Original Vault specification
+* `v2.0` — Updated to match Umamoe v2.0 documentation style, added related documentation, trusted data envelope, retrieval interface, update/delete rules, error handling, and implementation checklist.
+
 * Avoid external API acquisition.
 * Avoid presentation logic.
 * Avoid Discord-specific logic.
