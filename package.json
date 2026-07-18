@@ -24,6 +24,7 @@
     "node": ">=16"
   },
   "dependencies": {
+    "discord.js": "^14.27.0",
     "express": "^5.2.1",
     "node-fetch": "^2.6.7"
   }

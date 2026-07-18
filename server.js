@@ -11,6 +11,7 @@
 const express = require('express');
 const crypto = require('node:crypto');
 const fetch = require('node-fetch');
+const { Client, GatewayIntentBits, ActivityType } = require('discord.js');
 
 const createDiscordInteraction = require('./Distribution/Interaction/Discord/interaction');
 const { registerCommands } = require('./Distribution/Interaction/Discord/commands/register-commands');
@@ -220,6 +221,31 @@ app.post('/interactions', async (req, res) => {
   return res.json({ type: 1 });
 });
 
+// ── Gateway client (presence / online status) ─────────────────────────────────
+function startGatewayClient() {
+  const client = new Client({
+    intents: [GatewayIntentBits.Guilds],
+  });
+
+  client.once('clientReady', () => {
+    console.log(`[gateway] Logged in as ${client.user.tag} — bot is now online`);
+    client.user.setPresence({
+      status: 'online',
+      activities: [{ name: 'uma.moe', type: ActivityType.Watching }],
+    });
+  });
+
+  client.on('error', (err) => {
+    console.error('[gateway] Client error:', err.message);
+  });
+
+  client.login(BOT_TOKEN).catch((err) => {
+    console.error('[gateway] Login failed:', err.message);
+  });
+
+  return client;
+}
+
 // ── Startup ───────────────────────────────────────────────────────────────────
 async function start() {
   // Validate required config.
@@ -243,6 +269,9 @@ async function start() {
     console.error('[server] Command registration failed:', err.message, err.body || '');
     // Non-fatal — commands may already be registered.
   }
+
+  // Connect to Discord gateway so the bot appears online.
+  startGatewayClient();
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`[server] Listening on port ${PORT}`);
